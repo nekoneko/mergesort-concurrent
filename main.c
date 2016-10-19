@@ -6,6 +6,9 @@
 #include "list.h"
 
 #define USAGE "usage: ./sort [thread_count] [input_count]\n"
+#define DICT_FILE "./dictionary/words.txt"
+#define RESULT_FILE "result.txt"
+#define BUFF_SIZE 16
 
 struct {
     pthread_mutex_t mutex;
@@ -17,6 +20,12 @@ static llist_t *the_list = NULL;
 
 static int thread_count = 0, data_count = 0, max_cut = 0;
 static tpool_t *pool = NULL;
+
+/* customize for printing llist each element */
+static void print_funptr(val_t data, FILE *fp)
+{
+    fprintf(fp, "%s\n", (char *)data);
+}
 
 llist_t *merge_list(llist_t *a, llist_t *b)
 {
@@ -84,7 +93,7 @@ void merge(void *data)
         task_t *_task = (task_t *) malloc(sizeof(task_t));
         _task->func = NULL;
         tqueue_push(pool->queue, _task);
-        list_print(_list);
+        //list_print(_list);
     }
 }
 
@@ -142,28 +151,54 @@ static void *task_run(void *data)
 
 int main(int argc, char const *argv[])
 {
+    FILE *fin;
+    FILE *fout;
+    char line[BUFF_SIZE];
+    int i = 0;
+
+#if 0
     if (argc < 3) {
         printf(USAGE);
         return -1;
     }
+
     thread_count = atoi(argv[1]);
     data_count = atoi(argv[2]);
     max_cut = thread_count * (thread_count <= data_count) +
               data_count * (thread_count > data_count) - 1;
+#endif
 
     /* Read data */
     the_list = list_new();
 
-    /* FIXME: remove all all occurrences of printf and scanf
-     * in favor of automated test flow.
-     */
-    printf("input unsorted data line-by-line\n");
-    for (int i = 0; i < data_count; ++i) {
-        long int data;
-        scanf("%ld", &data);
-        list_add(the_list, data);
+    if (!(fin = fopen(DICT_FILE, "r"))) {
+        fprintf(stderr, "cannot read %s the file\n", DICT_FILE);
+        return -1;
     }
 
+    while (fgets(line, sizeof(line), fin)) {
+        char *name = NULL;
+        while (line[i] != '\0')
+            i++;
+        line[i - 1] = '\0';
+        i = 0;
+        name = (char *) malloc(16*sizeof(char));
+        strcpy(name, line);
+        list_add(the_list, (val_t) name);
+    }
+
+    fclose(fin);
+
+    if (!(fout = fopen(RESULT_FILE, "w"))) {
+        fprintf(stderr, "cannot read %s the file\n", RESULT_FILE);
+        return -1;
+    }
+
+    list_print(the_list, print_funptr, fout);
+
+    fclose(fout);
+
+#if 0
     /* initialize tasks inside thread pool */
     pthread_mutex_init(&(data_context.mutex), NULL);
     data_context.cut_thread_count = 0;
@@ -179,5 +214,6 @@ int main(int argc, char const *argv[])
 
     /* release thread pool */
     tpool_free(pool);
+#endif
     return 0;
 }

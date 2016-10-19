@@ -48,14 +48,11 @@ node_t *list_nth(llist_t *list, uint32_t idx)
     return head;
 }
 
-void list_print(llist_t *list)
+void list_print(llist_t *list, print_funptr_t print_funptr, FILE *fp)
 {
     node_t *cur = list->head;
-    /* FIXME: we have to validate the sorted results in advance. */
-    printf("\nsorted results:\n");
     while (cur) {
-        printf("[%ld] ", cur->data);
+        print_funptr(cur->data, fp);
         cur = cur->next;
     }
-    printf("\n");
 }
